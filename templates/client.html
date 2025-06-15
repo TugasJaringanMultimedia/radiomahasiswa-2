@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <title>Pendengar Radio</title>
+    <!-- (CSS Anda tidak berubah) -->
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -21,11 +22,17 @@
         border-bottom: 2px solid #eee;
         padding-bottom: 10px;
       }
-      #searchBox {
-        width: 100%;
-        padding: 10px;
+      .controls-container {
+        display: flex;
+        gap: 10px;
         margin-bottom: 20px;
-        box-sizing: border-box;
+      }
+      #searchBox {
+        flex-grow: 1;
+        padding: 10px;
+      }
+      #sortOptions {
+        padding: 10px;
       }
       .archive-item {
         display: flex;
@@ -40,10 +47,10 @@
       .archive-info span {
         display: block;
       }
-      .archive-info span.title {
+      .archive-info .title {
         font-weight: bold;
       }
-      .archive-info span.meta {
+      .archive-info .meta {
         font-size: 0.9em;
         color: #555;
       }
@@ -59,6 +66,7 @@
   <body>
     <h1>Halaman Client (Pendengar)</h1>
 
+    <!-- (Bagian Live Section tidak berubah) -->
     <div class="live-section">
       <h2>Siaran Langsung 🎙️</h2>
       {% if live_broadcast %}
@@ -75,37 +83,33 @@
 
     <div class="archive-section">
       <h2>Arsip Rekaman 📂</h2>
-
-      <div
-        class="controls-container"
-        style="display: flex; gap: 10px; margin-bottom: 20px"
-      >
+      <div class="controls-container">
         <input
           type="text"
           id="searchBox"
           placeholder="Cari berdasarkan judul atau tanggal..."
-          style="flex-grow: 1; padding: 10px"
         />
-        <select
-          id="sortOptions"
-          style="display: flex; gap: 10px; margin-bottom: 20px"
-        >
+        <select id="sortOptions">
           <option value="date_desc">Tanggal (Terbaru)</option>
           <option value="date_asc">Tanggal (Terlama)</option>
           <option value="title_asc">Judul (A-Z)</option>
           <option value="title_desc">Judul (Z-A)</option>
         </select>
       </div>
-
       <div id="archive-list">
         {% if arsip %} {% for b in arsip %}
         <div class="archive-item">
           <div class="archive-info">
             <span class="title">{{ b.title }}</span>
-            <span class="meta"
-              >{{ b.broadcast_date }} | {{ b.start_time }}</span
-            >
+            <span class="meta">
+              {{ b.broadcast_date }} | {{ b.start_time }}
+              <!-- PERUBAHAN DI SINI: Tampilkan durasi dari DB -->
+              {% if b.duration_in_seconds is not none %} | Durasi: {{
+              '%02d:%02d' % (b.duration_in_seconds // 60, b.duration_in_seconds
+              % 60) }} {% endif %}
+            </span>
           </div>
+          <!-- preload="none" lebih hemat bandwidth jika durasi sudah ada -->
           <audio
             controls
             preload="none"
@@ -117,7 +121,6 @@
         {% endif %}
       </div>
     </div>
-    <script src="/static/js/client.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/client.js') }}"></script>
