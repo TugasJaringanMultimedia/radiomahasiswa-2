@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pendengar Radio</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 40px auto;
+      }
+      .live-section,
+      .archive-section {
+        border: 1px solid #ccc;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+      }
+      h1,
+      h2 {
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+      }
+      #searchBox {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 20px;
+        box-sizing: border-box;
+      }
+      .archive-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        border-bottom: 1px solid #eee;
+      }
+      .archive-item:last-child {
+        border-bottom: none;
+      }
+      .archive-info span {
+        display: block;
+      }
+      .archive-info span.title {
+        font-weight: bold;
+      }
+      .archive-info span.meta {
+        font-size: 0.9em;
+        color: #555;
+      }
+      #live-status {
+        color: #555;
+      }
+      #live-title {
+        font-weight: bold;
+        color: red;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Halaman Client (Pendengar)</h1>
+
+    <div class="live-section">
+      <h2>Siaran Langsung 🎙️</h2>
+      {% if live_broadcast %}
+      <div id="live-status">
+        Sedang berlangsung:
+        <span id="live-title">{{ live_broadcast.title }}</span>
+      </div>
+      <audio id="livePlayer" controls></audio>
+      {% else %}
+      <div id="live-status">Tidak ada siaran langsung saat ini.</div>
+      <audio id="livePlayer" controls style="display: none"></audio>
+      {% endif %}
+    </div>
+
+    <div class="archive-section">
+      <h2>Arsip Rekaman 📂</h2>
+
+      <div
+        class="controls-container"
+        style="display: flex; gap: 10px; margin-bottom: 20px"
+      >
+        <input
+          type="text"
+          id="searchBox"
+          placeholder="Cari berdasarkan judul atau tanggal..."
+          style="flex-grow: 1; padding: 10px"
+        />
+        <select
+          id="sortOptions"
+          style="display: flex; gap: 10px; margin-bottom: 20px"
+        >
+          <option value="date_desc">Tanggal (Terbaru)</option>
+          <option value="date_asc">Tanggal (Terlama)</option>
+          <option value="title_asc">Judul (A-Z)</option>
+          <option value="title_desc">Judul (Z-A)</option>
+        </select>
+      </div>
+
+      <div id="archive-list">
+        {% if arsip %} {% for b in arsip %}
+        <div class="archive-item">
+          <div class="archive-info">
+            <span class="title">{{ b.title }}</span>
+            <span class="meta"
+              >{{ b.broadcast_date }} | {{ b.start_time }}</span
+            >
+          </div>
+          <audio
+            controls
+            preload="none"
+            src="/rekaman/{{ b.filename }}"
+          ></audio>
+        </div>
+        {% endfor %} {% else %}
+        <p id="no-archives">Tidak ada rekaman ditemukan.</p>
+        {% endif %}
+      </div>
+    </div>
+    <script src="/static/js/client.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/client.js') }}"></script>
+  </body>
+</html>
