@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <title>Pendengar Radio</title>
-    <!-- (CSS Anda tidak berubah) -->
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -66,7 +65,6 @@
   <body>
     <h1>Halaman Client (Pendengar)</h1>
 
-    <!-- (Bagian Live Section tidak berubah) -->
     <div class="live-section">
       <h2>Siaran Langsung 🎙️</h2>
       {% if live_broadcast %}
@@ -102,14 +100,12 @@
           <div class="archive-info">
             <span class="title">{{ b.title }}</span>
             <span class="meta">
-              {{ b.broadcast_date }} | {{ b.start_time }}
-              <!-- PERUBAHAN DI SINI: Tampilkan durasi dari DB -->
-              {% if b.duration_in_seconds is not none %} | Durasi: {{
-              '%02d:%02d' % (b.duration_in_seconds // 60, b.duration_in_seconds
-              % 60) }} {% endif %}
+              {{ b.broadcast_date }} | {{ b.start_time }} {% if
+              b.duration_in_seconds is not none %} | Durasi: {{ '%02d:%02d' %
+              (b.duration_in_seconds // 60, b.duration_in_seconds % 60) }} {%
+              endif %}
             </span>
           </div>
-          <!-- preload="none" lebih hemat bandwidth jika durasi sudah ada -->
           <audio
             controls
             preload="none"

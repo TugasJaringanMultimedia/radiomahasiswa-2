@@ -24,20 +24,31 @@ if not os.path.exists(app.instance_path):
 
 with app.app_context():
     db.create_all()
+    # --- PERUBAHAN DI SINI: Inisialisasi status siaran langsung dari DB saat aplikasi dimulai ---
+    live_broadcast_on_startup = Broadcast.query.filter_by(is_live=True).first()
+    if live_broadcast_on_startup:
+        print(f"Ditemukan siaran langsung aktif dari DB: {live_broadcast_on_startup.title}")
+    else:
+        print("Tidak ada siaran langsung aktif yang ditemukan di DB saat startup.")
 
-# --- Variabel Global untuk Siaran ---
-active_broadcast_id = None
-start_time_obj = None # Untuk menyimpan waktu mulai sebagai objek datetime
-file_writer = None
+# Variabel global masih akan digunakan, tetapi active_broadcast_id akan diisi dari DB jika ada
+active_broadcast_id = live_broadcast_on_startup.id if live_broadcast_on_startup else None
+start_time_obj = None # Waktu mulai yang tepat akan diatur saat event 'start_broadcast' diterima
+
+file_writer = None # File writer harus diinisialisasi ulang saat siaran dimulai
 
 # --- Rute Halaman (Routing) ---
 @app.route('/')
 def index():
-    return render_template('penyiar.html')
+    # Mengirim data siaran live ke template penyiar agar tahu status saat refresh
+    live_broadcast = Broadcast.query.filter_by(is_live=True).first()
+    return render_template('penyiar.html', live_broadcast=live_broadcast)
 
 @app.route('/penyiar')
 def penyiar_page():
-    return render_template('penyiar.html')
+    # Mengirim data siaran live ke template penyiar agar tahu status saat refresh
+    live_broadcast = Broadcast.query.filter_by(is_live=True).first()
+    return render_template('penyiar.html', live_broadcast=live_broadcast)
 
 @app.route('/client')
 def client_page():
@@ -69,8 +80,6 @@ def search_broadcasts():
     
     results = search_query.filter_by(is_live=False).all()
 
-    # --- PERUBAHAN DI SINI ---
-    # Sekarang kita juga mengirim 'duration' ke client
     broadcast_list = [{
         'id': b.id,
         'title': b.title,
@@ -88,6 +97,18 @@ def handle_start_broadcast(data):
     """Mencatat waktu mulai saat siaran dimulai."""
     global active_broadcast_id, start_time_obj, file_writer
     
+    # Periksa apakah sudah ada siaran live yang aktif di DB
+    existing_live = Broadcast.query.filter_by(is_live=True).first()
+    if existing_live:
+        print(f"Siaran '{existing_live.title}' sudah berlangsung. Menghentikan siaran lama.")
+        existing_live.is_live = False
+        existing_live.end_time = datetime.datetime.now().strftime("%H:%M") # Set end time for the old one
+        # Jika file_writer masih aktif untuk siaran lama, tutup
+        if file_writer:
+            file_writer.close()
+            file_writer = None
+        db.session.commit() # Commit perubahan pada siaran lama
+
     start_time_obj = datetime.datetime.now() # Catat waktu mulai yang presisi
     
     timestamp = start_time_obj.strftime("%Y%m%d_%H%M%S")
@@ -98,10 +119,10 @@ def handle_start_broadcast(data):
         broadcast_date=data['date'],
         start_time=data['startTime'],
         filename=filename,
-        is_live=True
+        is_live=True # Tandai sebagai live
     )
     db.session.add(new_broadcast)
-    db.session.commit()
+    db.session.commit() # Commit siaran baru ke DB
     
     active_broadcast_id = new_broadcast.id
     current_broadcast_file = os.path.join(rekaman_folder, filename)
@@ -136,11 +157,10 @@ def handle_stop_broadcast(data):
         broadcast_to_stop = Broadcast.query.get(active_broadcast_id)
         if broadcast_to_stop:
             end_time_obj = datetime.datetime.now()
-            # Hitung selisih waktu untuk mendapatkan durasi
             duration = end_time_obj - start_time_obj
             broadcast_to_stop.duration_in_seconds = int(duration.total_seconds())
             
-            broadcast_to_stop.is_live = False
+            broadcast_to_stop.is_live = False # Tandai sebagai tidak live
             broadcast_to_stop.end_time = data['endTime']
             db.session.commit()
     
@@ -148,6 +168,35 @@ def handle_stop_broadcast(data):
     print(f"Siaran dihentikan. Durasi: {duration.total_seconds()} detik.")
     active_broadcast_id = None
     start_time_obj = None
+
+@socketio.on('force_stop_broadcast')
+def handle_force_stop_broadcast():
+    """Menghentikan siaran aktif di database jika kontrol browser hilang."""
+    global active_broadcast_id, start_time_obj, file_writer
+
+    print("Menerima sinyal 'force_stop_broadcast'.")
+    if file_writer:
+        try:
+            file_writer.close()
+            print("File writer ditutup karena force stop.")
+        except Exception as e:
+            print(f"Gagal menutup file writer saat force stop: {e}")
+        file_writer = None
+
+    if active_broadcast_id:
+        broadcast_to_stop = Broadcast.query.get(active_broadcast_id)
+        if broadcast_to_stop:
+            broadcast_to_stop.duration_in_seconds = None # Durasi tidak bisa dihitung akurat jika start_time_obj hilang
+            broadcast_to_stop.is_live = False
+            broadcast_to_stop.end_time = datetime.datetime.now().strftime("%H:%M")
+            db.session.commit()
+            print(f"Siaran '{broadcast_to_stop.title}' dihentikan secara paksa di DB.")
+        
+    emit('broadcast_stopped', {}, broadcast=True) # Beri tahu client bahwa siaran berhenti
+    active_broadcast_id = None
+    start_time_obj = None
+    print("Status siaran di server direset.")
+
 
 if __name__ == '__main__':
     socketio.run(app, debug=True, port=5000, allow_unsafe_werkzeug=True)

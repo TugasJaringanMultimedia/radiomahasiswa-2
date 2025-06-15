@@ -36,6 +36,11 @@
       #btnStop {
         background-color: #dc3545;
       }
+      #btnForceStopServer {
+        /* Gaya untuk tombol force stop baru */
+        background-color: orange;
+        margin-top: 10px;
+      }
       #status {
         margin-top: 20px;
         font-weight: bold;
@@ -47,22 +52,58 @@
     <form id="broadcastForm">
       <div class="form-group">
         <label for="title">Judul Siaran</label>
-        <input type="text" id="title" name="title" required />
+        <input
+          type="text"
+          id="title"
+          name="title"
+          required
+          value="{{ live_broadcast.title if live_broadcast else '' }}"
+        />
       </div>
       <div class="form-group">
         <label for="date">Tanggal Siaran</label>
-        <input type="date" id="date" name="date" required />
+        <input
+          type="date"
+          id="date"
+          name="date"
+          required
+          value="{{ live_broadcast.broadcast_date if live_broadcast else '' }}"
+        />
       </div>
       <div class="form-group">
         <label for="startTime">Waktu Mulai</label>
-        <input type="time" id="startTime" name="startTime" required />
+        <input
+          type="time"
+          id="startTime"
+          name="startTime"
+          required
+          value="{{ live_broadcast.start_time if live_broadcast else '' }}"
+        />
       </div>
     </form>
 
-    <button id="btnStart">Mulai Siaran</button>
-    <button id="btnStop" disabled>Hentikan Siaran</button>
+    <button id="btnStart" {% if live_broadcast %} disabled {% endif %}>
+      Mulai Siaran
+    </button>
+    <button id="btnStop" {% if not live_broadcast %} disabled {% endif %}>
+      Hentikan Siaran
+    </button>
 
-    <div id="status" style="color: grey">Status: Tidak Siaran</div>
+    <div id="status" style="color: grey">
+      Status: {% if live_broadcast %}
+      <span style="color: red">Sedang Siaran - {{ live_broadcast.title }}</span
+      ><br />
+      <small
+        >(Siaran ini dimulai sebelum halaman di-refresh. Untuk menghentikannya,
+        klik "Hentikan Siaran" jika Anda yang memulai rekaman ini, atau
+        "Hentikan Siaran di Server" jika ini adalah siaran lama.)</small
+      >
+      {% else %} Tidak Siaran {% endif %}
+    </div>
+
+    {% if live_broadcast %}
+    <button id="btnForceStopServer">Hentikan Siaran di Server</button>
+    {% endif %}
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script src="{{ url_for('static', filename='js/penyiar.js') }}"></script>
